@@ -8,6 +8,12 @@ This is a personal portfolio project built from scratch. It does not contain
 proprietary code, data, internal architecture, or business logic from any
 employer.
 
+## Screenshots
+
+![InsightHub dashboard](docs/screenshots/dashboard.png)
+
+![InsightHub funnel report](docs/screenshots/funnels.png)
+
 ## What I Built
 
 - Multi-tenant organization and project model.
