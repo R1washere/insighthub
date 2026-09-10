@@ -1,0 +1,26 @@
+{
+  "name": "@insighthub/browser",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Browser tracking SDK for InsightHub event ingestion.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "node ../../node_modules/typescript/bin/tsc -p tsconfig.json",
+    "lint": "echo \"browser sdk lint not configured yet\"",
+    "test": "node ../../node_modules/tsx/dist/cli.mjs scripts/smoke-test.ts",
+    "typecheck": "node ../../node_modules/typescript/bin/tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String               @id @default(cuid())
+  email        String               @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+  memberships  OrganizationMember[]
+  funnels      Funnel[]             @relation("FunnelCreator")
+}
+
+model Organization {
+  id        String               @id @default(cuid())
+  name      String
+  slug      String               @unique
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  members   OrganizationMember[]
+  projects  Project[]
+}
+
+model OrganizationMember {
+  id             String           @id @default(cuid())
+  organizationId String
+  userId         String
+  role           String           @default("member")
+  createdAt      DateTime         @default(now())
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Project {
+  id             String          @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  timezone       String          @default("UTC")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  apiKeys        ProjectApiKey[]
+  events         Event[]
+  funnels        Funnel[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+}
+
+model ProjectApiKey {
+  id         String    @id @default(cuid())
+  projectId  String
+  name       String
+  keyHash    String    @unique
+  prefix     String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([prefix])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  projectId   String
+  name        String
+  userId      String?
+  anonymousId String?
+  properties  String   @default("{}")
+  occurredAt  DateTime @default(now())
+  ingestedAt  DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, occurredAt])
+  @@index([projectId, name])
+  @@index([projectId, userId])
+  @@index([projectId, anonymousId])
+}
+
+model Funnel {
+  id          String       @id @default(cuid())
+  projectId   String
+  createdById String
+  name        String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdBy   User         @relation("FunnelCreator", fields: [createdById], references: [id])
+  steps       FunnelStep[]
+
+  @@index([projectId])
+  @@index([createdById])
+}
+
+model FunnelStep {
+  id        String @id @default(cuid())
+  funnelId  String
+  order     Int
+  eventName String
+  funnel    Funnel @relation(fields: [funnelId], references: [id], onDelete: Cascade)
+
+  @@unique([funnelId, order])
+  @@index([funnelId])
+}
