@@ -1,5 +1,7 @@
 # InsightHub
 
+[![CI](https://github.com/R1washere/insighthub/actions/workflows/ci.yml/badge.svg)](https://github.com/R1washere/insighthub/actions/workflows/ci.yml)
+
 InsightHub is a full-stack product analytics demo for B2B SaaS teams. It
 tracks custom events, manages project API keys, and turns raw product activity
 into dashboards, event exploration and funnel reports.
@@ -7,6 +9,18 @@ into dashboards, event exploration and funnel reports.
 This is a personal portfolio project built from scratch. It does not contain
 proprietary code, data, internal architecture, or business logic from any
 employer.
+
+## Quick Review
+
+- Full-stack monorepo with Next.js UI, NestJS API, Prisma schema, shared
+  TypeScript contracts and a browser tracking SDK.
+- Product area: authentication, API keys, event ingestion, analytics
+  dashboards, event exploration and funnel reports.
+- Review path: start with the screenshots, then open
+  `docs/reviewer-guide.md`, `docs/architecture.md` and
+  `docs/database-model.md`.
+- Verification path: run `pnpm verify` for local checks, builds and smoke
+  tests.
 
 ## Screenshots
 
@@ -101,3 +115,4 @@ tests, checks key web routes, and restores seeded demo data.
 - Architecture overview: `docs/architecture.md`
 - Database notes: `docs/database-model.md`
 - Browser SDK README: `packages/browser/README.md`
+- Reviewer guide: `docs/reviewer-guide.md`
