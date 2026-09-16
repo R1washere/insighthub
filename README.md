@@ -18,7 +18,7 @@ employer.
   dashboards, event exploration and funnel reports.
 - Review path: start with the screenshots, then open
   `docs/reviewer-guide.md`, `docs/architecture.md` and
-  `docs/database-model.md`.
+  `docs/database-model.md`, plus `ROADMAP.md` for planned improvements.
 - Verification path: run `pnpm verify` for local checks, builds and smoke
   tests.
 
