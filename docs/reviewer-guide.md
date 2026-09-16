@@ -8,11 +8,12 @@ reporting, dashboards, and a browser SDK.
 
 1. Start with `README.md` for the product overview and local setup.
 2. Review `docs/architecture.md` and `docs/database-model.md` for system shape.
-3. Open `apps/web/app` and `apps/web/components` for the Next.js UI.
-4. Open `apps/api/src/events`, `apps/api/src/analytics`, and
+3. Use `docs/api-examples.md` to exercise ingestion and analytics with `curl`.
+4. Open `apps/web/app` and `apps/web/components` for the Next.js UI.
+5. Open `apps/api/src/events`, `apps/api/src/analytics`, and
    `apps/api/src/funnels` for the main backend flows.
-5. Open `packages/browser` to review the tracking SDK.
-6. Open `prisma/schema.prisma` to review tenancy, projects, events, and reports.
+6. Open `packages/browser` to review the tracking SDK.
+7. Open `prisma/schema.prisma` to review tenancy, projects, events, and reports.
 
 ## What To Look For
 
