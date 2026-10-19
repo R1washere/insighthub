@@ -14,6 +14,9 @@ import {
 import { type AuthResponse, requestApi } from "../../lib/api-client";
 
 export function SessionStatus() {
+  const demoLoginEnabled =
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_DEMO_LOGIN_ENABLED === "true";
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -103,14 +106,16 @@ export function SessionStatus() {
       <section className="session-card" aria-label="Session status">
         <p className="session-label">Session</p>
         <p className="session-email">Guest mode</p>
-        <button
-          className="button full-width compact-button"
-          disabled={isDemoLoading}
-          onClick={handleDemoLogin}
-          type="button"
-        >
-          {isDemoLoading ? "Opening demo..." : "Use demo account"}
-        </button>
+        {demoLoginEnabled ? (
+          <button
+            className="button full-width compact-button"
+            disabled={isDemoLoading}
+            onClick={handleDemoLogin}
+            type="button"
+          >
+            {isDemoLoading ? "Opening demo..." : "Use demo account"}
+          </button>
+        ) : null}
         <Link className="session-link" href="/login">
           Sign in manually
         </Link>

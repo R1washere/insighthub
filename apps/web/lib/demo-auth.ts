@@ -10,6 +10,12 @@ type AuthStorageOptions = {
 };
 
 export async function signInDemoAccount() {
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PUBLIC_DEMO_LOGIN_ENABLED !== "true"
+  ) {
+    throw new Error("Demo login is disabled");
+  }
   const result = await requestApi<AuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify(demoCredentials),
