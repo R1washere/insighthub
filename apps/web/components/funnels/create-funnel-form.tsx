@@ -77,6 +77,8 @@ export function CreateFunnelForm({
         },
       );
 
+      if (localStorage.getItem("insighthub.accessToken") !== accessToken)
+        return;
       window.location.href = buildHref("/funnels", {
         days,
         funnelId: funnel.id,

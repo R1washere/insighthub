@@ -24,6 +24,7 @@ export function ReportControls({
           Project
         </label>
         <select
+          key={projectId}
           className="control-select"
           defaultValue={projectId}
           id="projectId"
@@ -32,6 +33,7 @@ export function ReportControls({
           {projectOptions.map((project) => (
             <option key={project.id} value={project.id}>
               {project.name}
+              {project.organizationName ? ` · ${project.organizationName}` : ""}
             </option>
           ))}
         </select>

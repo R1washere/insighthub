@@ -3,6 +3,8 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import type { ProjectApiKeyListItem } from "@insighthub/shared";
 import { requestApi } from "../../lib/api-client";
+import { useWorkspace } from "../app/workspace-provider";
+import { resolveProjectId, type ProjectOption } from "../../lib/dashboard-data";
 
 type Organization = {
   id: string;
@@ -41,7 +43,66 @@ type LoadState =
     }
   | { status: "error"; message: string };
 
-export function ApiKeysManager() {
+export function ApiKeysManager({
+  requestedProjectId,
+}: {
+  requestedProjectId?: string;
+}) {
+  const workspace = useWorkspace();
+  if (workspace.status === "loading")
+    return (
+      <section className="panel empty-state">
+        <h3>Loading project settings</h3>
+      </section>
+    );
+  if (!workspace.accessToken)
+    return (
+      <section className="panel empty-state">
+        <h3>Sign in to manage API keys</h3>
+        <a href="/login">Sign in</a>
+      </section>
+    );
+  if (workspace.status === "error")
+    return (
+      <section className="panel empty-state" role="alert">
+        <h3>Unable to load settings</h3>
+        <p>{workspace.message}</p>
+        <a href="/login">Sign in again</a>
+      </section>
+    );
+  const id = resolveProjectId(
+    requestedProjectId,
+    workspace.projects,
+    workspace.storedProjectId,
+  );
+  const project = workspace.projects.find((item) => item.id === id);
+  if (!project)
+    return (
+      <section className="panel empty-state">
+        <h3>No project found</h3>
+        <a href="/onboarding">Create workspace</a>
+      </section>
+    );
+  if (requestedProjectId && requestedProjectId !== id)
+    return (
+      <section className="panel empty-state" role="alert">
+        <h3>Project unavailable</h3>
+        <a href="/settings">Open your project settings</a>
+      </section>
+    );
+  return (
+    <ProjectApiKeysManager
+      key={workspace.accessToken + id}
+      selectedProject={project}
+    />
+  );
+}
+
+function ProjectApiKeysManager({
+  selectedProject,
+}: {
+  selectedProject: ProjectOption;
+}) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [createdToken, setCreatedToken] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -64,7 +125,8 @@ export function ApiKeysManager() {
   const projectCounts =
     state.status === "ready"
       ? {
-          apiKeys: state.project._count?.apiKeys ?? state.project.apiKeys.length,
+          apiKeys:
+            state.project._count?.apiKeys ?? state.project.apiKeys.length,
           events: state.project._count?.events ?? 0,
           funnels: state.project._count?.funnels ?? 0,
         }
@@ -84,29 +146,11 @@ export function ApiKeysManager() {
       const authHeaders = {
         authorization: `Bearer ${accessToken}`,
       };
-      const organizations = await requestApi<Organization[]>("/organizations", {
-        headers: authHeaders,
-      });
-      const organization = organizations[0];
-
-      if (!organization) {
-        setState({ status: "empty" });
-        return;
-      }
-
-      const projects = await requestApi<ProjectSummary[]>(
-        `/organizations/${organization.id}/projects`,
-        {
-          headers: authHeaders,
-        },
-      );
-      const project = projects[0];
-
-      if (!project) {
-        setState({ status: "empty" });
-        return;
-      }
-
+      const organization = {
+        id: selectedProject.organizationId ?? "",
+        name: selectedProject.organizationName ?? "Workspace",
+      };
+      const project = selectedProject;
       const projectDetails = await requestApi<ProjectDetails>(
         `/projects/${project.id}`,
         {
@@ -260,10 +304,7 @@ export function ApiKeysManager() {
     return (
       <section className="panel empty-state">
         <h3>Sign in to manage API keys</h3>
-        <p>
-          The settings screen uses the JWT access token saved by the demo login
-          flow.
-        </p>
+        <p>Sign in to create or revoke tracking keys for your projects.</p>
         <a className="button" href="/login">
           Sign in
         </a>
@@ -401,7 +442,9 @@ export function ApiKeysManager() {
                 </span>
                 <button
                   className="table-action danger-action"
-                  disabled={Boolean(key.revokedAt) || isLastActiveKey || isRevoking}
+                  disabled={
+                    Boolean(key.revokedAt) || isLastActiveKey || isRevoking
+                  }
                   onClick={() => void revokeKey(key.id)}
                   title={
                     isLastActiveKey

@@ -79,6 +79,7 @@ await run("pnpm", ["db:setup"]);
 console.log("Running focused package checks...");
 await run("pnpm", ["--filter", "@insighthub/api", "test:rate-limit"]);
 await run("pnpm", ["--filter", "@insighthub/browser", "test"]);
+await run("pnpm", ["test:reports"]);
 
 console.log("Running workspace typecheck and production build...");
 await run("pnpm", ["typecheck"]);
@@ -130,10 +131,7 @@ try {
     "/events?projectId=taskflow-marketing&days=7",
     "Tracked product events",
   );
-  await assertPage(
-    "/funnels?projectId=taskflow-mobile&days=90",
-    "Create funnel",
-  );
+  await assertPage("/funnels?projectId=taskflow-mobile&days=90", "Funnels");
   await assertPage("/tracking", "Install product tracking");
   await assertPage("/settings", "API keys");
   await assertPage("/onboarding", "Create your analytics workspace");
