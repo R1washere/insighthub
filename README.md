@@ -39,7 +39,7 @@ employer.
 - Funnel builder and saved conversion reports.
 - Browser tracking SDK with queueing, retry, `identify()` and manual `flush()`.
 - Onboarding flow for creating the first organization, project and API key.
-- SQLite seed data for fast local review.
+- PostgreSQL seed data for fast local review and hosted persistence.
 
 ## Stack
 
@@ -48,7 +48,7 @@ employer.
 - NestJS
 - TypeScript
 - Prisma
-- SQLite
+- PostgreSQL
 - pnpm workspaces
 
 ## Project Structure
@@ -58,7 +58,7 @@ apps/web           Next.js analytics dashboard
 apps/api           NestJS backend API
 packages/browser   Browser tracking SDK
 packages/shared    Shared TypeScript contracts
-prisma             SQLite schema and seed data
+prisma             PostgreSQL schema, migrations, and seed data
 scripts            Local setup, verification and smoke tests
 ```
 
@@ -67,9 +67,14 @@ scripts            Local setup, verification and smoke tests
 ```bash
 pnpm install
 cp .env.example .env
+docker compose up -d
 pnpm db:setup
 pnpm dev
 ```
+
+`pnpm db:setup` only resets databases running on localhost. Hosted databases
+must use `pnpm db:deploy`, which applies pending migrations without deleting
+data.
 
 Web app: `http://localhost:3000`
 
@@ -106,9 +111,15 @@ curl -X POST http://localhost:4000/api/auth/login \
 pnpm verify
 ```
 
-The verification script resets the local SQLite database, runs package checks,
+The verification script resets the local PostgreSQL database, runs package checks,
 typechecks, builds production bundles, starts both local apps, runs smoke
 tests, checks key web routes, and restores seeded demo data.
+
+## Free Hosting
+
+The recommended no-cost setup is Vercel Hobby for the Next.js frontend, a
+Render Free web service for the NestJS API, and Neon Free for PostgreSQL. See
+`docs/deployment.md` for the exact settings and secret-handling checklist.
 
 ## Notes
 

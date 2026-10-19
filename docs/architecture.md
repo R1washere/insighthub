@@ -17,7 +17,7 @@ packages/browser Browser tracking SDK package
 Browser
   -> Next.js Web App
     -> NestJS API
-      -> SQLite demo database
+      -> PostgreSQL database
 ```
 
 ## Backend Modules
@@ -39,7 +39,7 @@ Browser
 POST /api/auth/register
   -> validate DTO
   -> hash password with argon2
-  -> create user in SQLite through Prisma
+  -> create user in PostgreSQL through Prisma
   -> return public user + JWT access token
 
 POST /api/auth/login
@@ -118,6 +118,6 @@ The frontend uses API-backed server-side fetches when demo environment variables
 ## Verification Flow
 
 `pnpm verify` is the local confidence check for the portfolio version. It resets
-SQLite, runs focused package tests, typechecks, builds production bundles, starts
+PostgreSQL, runs focused package tests, typechecks, builds production bundles, starts
 the local API/web apps, runs API smoke tests, checks important web routes, and
 then restores a clean seeded database.

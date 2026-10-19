@@ -12,13 +12,14 @@
     "typecheck": "pnpm -r typecheck",
     "verify": "node scripts/local-verify.mjs",
     "format": "node node_modules/prettier/bin/prettier.cjs --write \"**/*.{ts,tsx,js,json,md}\" && node node_modules/prisma/build/index.js format",
-    "db:setup": "node scripts/setup-sqlite.mjs && pnpm db:generate && pnpm db:seed",
+    "db:setup": "node --env-file=.env scripts/setup-postgres.mjs",
+    "db:deploy": "node node_modules/prisma/build/index.js migrate deploy",
     "db:generate": "node node_modules/prisma/build/index.js generate",
     "db:studio": "node node_modules/prisma/build/index.js studio",
-    "db:seed": "node node_modules/tsx/dist/cli.mjs prisma/seed.ts"
+    "db:seed": "node --env-file=.env node_modules/tsx/dist/cli.mjs prisma/seed.ts"
   },
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.0.0",
     "pnpm": ">=9.0.0"
   },
   "packageManager": "pnpm@11.9.0",

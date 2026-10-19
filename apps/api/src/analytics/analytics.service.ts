@@ -142,7 +142,7 @@ export class AnalyticsService {
       }>
     >(Prisma.sql`
       SELECT
-        date("occurredAt") AS day,
+        TO_CHAR("occurredAt", 'YYYY-MM-DD') AS day,
         COUNT(*) AS events,
         COUNT(DISTINCT COALESCE("userId", "anonymousId")) AS "uniqueUsers"
       FROM "Event"
@@ -295,11 +295,11 @@ export class AnalyticsService {
 
 function getDateRange(days: number) {
   const currentStart = new Date();
-  currentStart.setDate(currentStart.getDate() - days + 1);
-  currentStart.setHours(0, 0, 0, 0);
+  currentStart.setUTCDate(currentStart.getUTCDate() - days + 1);
+  currentStart.setUTCHours(0, 0, 0, 0);
 
   const previousStart = new Date(currentStart);
-  previousStart.setDate(currentStart.getDate() - days);
+  previousStart.setUTCDate(currentStart.getUTCDate() - days);
 
   return {
     currentStart,
@@ -310,12 +310,12 @@ function getDateRange(days: number) {
 function createDateKeys(days: number) {
   const dates: string[] = [];
   const current = new Date();
-  current.setDate(current.getDate() - days + 1);
-  current.setHours(0, 0, 0, 0);
+  current.setUTCDate(current.getUTCDate() - days + 1);
+  current.setUTCHours(0, 0, 0, 0);
 
   for (let index = 0; index < days; index += 1) {
     dates.push(toDateKey(current));
-    current.setDate(current.getDate() + 1);
+    current.setUTCDate(current.getUTCDate() + 1);
   }
 
   return dates;

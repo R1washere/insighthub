@@ -28,9 +28,10 @@ reporting, dashboards, and a browser SDK.
 ```bash
 pnpm install
 cp .env.example .env
+docker compose up -d
 pnpm db:setup
 pnpm verify
 ```
 
-The verification script prepares the local SQLite database, runs checks, builds
+The verification script prepares the local PostgreSQL database, runs checks, builds
 the workspaces, starts the apps, checks key routes, and runs smoke tests.

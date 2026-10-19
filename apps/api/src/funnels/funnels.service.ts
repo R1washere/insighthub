@@ -218,8 +218,8 @@ function calculateProgressionByActor(
 
 function getDateRange(days: number) {
   const start = new Date();
-  start.setDate(start.getDate() - days + 1);
-  start.setHours(0, 0, 0, 0);
+  start.setUTCDate(start.getUTCDate() - days + 1);
+  start.setUTCHours(0, 0, 0, 0);
 
   const end = new Date();
 

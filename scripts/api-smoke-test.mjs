@@ -20,6 +20,7 @@ const request = async (path, options = {}) => {
   return {
     ok: response.ok,
     status: response.status,
+    headers: response.headers,
     body,
   };
 };
@@ -32,6 +33,37 @@ const assertStatus = (result, expectedStatus, label) => {
   }
 };
 
+const health = await request("/health");
+assertStatus(health, 200, "health");
+if (
+  health.headers.get("x-content-type-options") !== "nosniff" ||
+  health.headers.has("x-powered-by")
+) {
+  throw new Error("Expected hardened API response headers");
+}
+
+const foreignOrigin = "https://external-tracking.example";
+const sdkPreflight = await request("/events", {
+  method: "OPTIONS",
+  headers: {
+    origin: foreignOrigin,
+    "access-control-request-method": "POST",
+    "access-control-request-headers": "content-type,x-insighthub-key",
+  },
+});
+assertStatus(sdkPreflight, 204, "browser SDK CORS preflight");
+if (sdkPreflight.headers.get("access-control-allow-origin") !== "*") {
+  throw new Error("Browser SDK must be able to send events from other sites");
+}
+
+const foreignRead = await request("/auth/me", {
+  headers: { origin: foreignOrigin },
+});
+assertStatus(foreignRead, 401, "unauthenticated read");
+if (foreignRead.headers.has("access-control-allow-origin")) {
+  throw new Error("Dashboard endpoints must not allow unknown CORS origins");
+}
+
 const login = await request("/auth/login", {
   method: "POST",
   body: JSON.stringify({
@@ -40,6 +72,9 @@ const login = await request("/auth/login", {
   }),
 });
 assertStatus(login, 201, "login");
+if ("passwordHash" in login.body.user) {
+  throw new Error("Login must never return the password hash");
+}
 
 const authHeaders = {
   authorization: `Bearer ${login.body.accessToken}`,
@@ -106,6 +141,39 @@ const project = projects.body[0];
 
 if (!project) {
   throw new Error("Expected seeded project");
+}
+
+const crossTenantRead = await request(`/projects/${project.id}`, {
+  headers: onboardingHeaders,
+});
+assertStatus(crossTenantRead, 404, "cross-tenant project access");
+
+const utcEventTime = new Date();
+utcEventTime.setUTCDate(utcEventTime.getUTCDate() - 1);
+utcEventTime.setUTCHours(23, 30, 0, 0);
+const utcEvent = await request("/events", {
+  method: "POST",
+  headers: { "x-insighthub-key": onboardingProject.body.apiKey },
+  body: JSON.stringify({
+    event: "utc_boundary_check",
+    userId: "utc_smoke_actor",
+    timestamp: utcEventTime.toISOString(),
+  }),
+});
+assertStatus(utcEvent, 201, "track UTC boundary event");
+
+const utcReport = await request(
+  `/projects/${onboardingProject.body.project.id}/analytics/events-over-time?days=7`,
+  { headers: onboardingHeaders },
+);
+assertStatus(utcReport, 200, "UTC time series");
+const utcPoint = utcReport.body.find(
+  (point) => point.date === utcEventTime.toISOString().slice(0, 10),
+);
+if (utcPoint?.events !== 1 || utcPoint.uniqueUsers !== 1) {
+  throw new Error(
+    "PostgreSQL time series must bucket events by UTC calendar date",
+  );
 }
 
 const projectDetails = await request(`/projects/${project.id}`, {
@@ -278,5 +346,29 @@ const rejectedEvent = await request("/events", {
   }),
 });
 assertStatus(rejectedEvent, 401, "track event after revoke");
+
+let authLimited = false;
+for (let index = 0; index < 21; index += 1) {
+  const attempt = await request("/auth/login", {
+    method: "POST",
+    body: "{}",
+  });
+  if (attempt.status === 429) {
+    if (!attempt.headers.has("retry-after")) {
+      throw new Error("Auth limiter must return Retry-After");
+    }
+    authLimited = true;
+    break;
+  }
+  assertStatus(attempt, 400, "invalid login validation");
+}
+if (!authLimited) {
+  throw new Error("Repeated authentication attempts must be rate limited");
+}
+assertStatus(
+  await request("/health"),
+  200,
+  "health remains available after rate limit",
+);
 
 console.log("API smoke test passed");

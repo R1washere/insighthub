@@ -2,6 +2,15 @@ import { PrismaClient } from "@prisma/client";
 import * as argon2 from "argon2";
 import { createHash } from "node:crypto";
 
+const databaseHost = new URL(process.env.DATABASE_URL ?? "").hostname;
+
+if (
+  process.env.NODE_ENV === "production" ||
+  !["localhost", "127.0.0.1", "[::1]"].includes(databaseHost)
+) {
+  throw new Error("Demo seed is restricted to local development databases.");
+}
+
 const prisma = new PrismaClient();
 
 const demoUser = {

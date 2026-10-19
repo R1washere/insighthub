@@ -75,7 +75,7 @@ export function AppShell({ active, children, days, project }: AppShellProps) {
 
         <div className="sidebar-footer">
           <p>Demo workspace</p>
-          <span>SQLite · seeded analytics data</span>
+          <span>Sample analytics · portfolio preview</span>
         </div>
 
         <SessionStatus />
