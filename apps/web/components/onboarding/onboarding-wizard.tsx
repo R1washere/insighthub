@@ -7,8 +7,9 @@ import {
   clearAuthSession,
   getStoredAccessToken,
   storeAuthSession,
+  notifyWorkspaceChanged,
 } from "../../lib/demo-auth";
-import { type AuthResponse, requestApi } from "../../lib/api-client";
+import { ApiError, type AuthResponse, requestApi } from "../../lib/api-client";
 
 type Organization = {
   id: string;
@@ -59,6 +60,7 @@ export function OnboardingWizard() {
 
   async function validateSession() {
     const accessToken = getStoredAccessToken();
+    setState({ status: "checking-session" });
 
     if (!accessToken) {
       setState({ status: "missing-token" });
@@ -71,6 +73,7 @@ export function OnboardingWizard() {
           authorization: `Bearer ${accessToken}`,
         },
       });
+      if (getStoredAccessToken() !== accessToken) return;
 
       storeAuthSession(
         {
@@ -80,9 +83,17 @@ export function OnboardingWizard() {
         { notify: false },
       );
       setState({ status: "ready" });
-    } catch {
-      clearAuthSession({ notify: false });
-      setState({ status: "missing-token" });
+    } catch (error) {
+      if (getStoredAccessToken() !== accessToken) return;
+      setState(
+        error instanceof ApiError && error.status === 401
+          ? { status: "missing-token" }
+          : {
+              status: "error",
+              message:
+                "Unable to verify your session. Please retry when the server is available.",
+            },
+      );
     }
   }
 
@@ -132,9 +143,10 @@ export function OnboardingWizard() {
           body: JSON.stringify({ name: projectName, timezone }),
         },
       );
+      if (getStoredAccessToken() !== accessToken) return;
 
       localStorage.setItem("insighthub.projectId", projectResult.project.id);
-      localStorage.setItem("insighthub.projectApiKey", projectResult.apiKey);
+      notifyWorkspaceChanged();
 
       setState({
         status: "complete",
@@ -182,7 +194,7 @@ export function OnboardingWizard() {
           protected NestJS endpoints.
         </p>
         <Link className="button" href="/login">
-          Open demo login
+          Sign in
         </Link>
       </section>
     );
@@ -218,13 +230,28 @@ export function OnboardingWizard() {
         </div>
 
         <div className="onboarding-actions">
-          <Link className="button" href="/tracking">
+          <Link
+            className="button"
+            href={`/tracking?projectId=${state.project.id}`}
+          >
             Install tracking
           </Link>
-          <Link className="button secondary-button" href="/settings">
+          <Link
+            className="button secondary-button"
+            href={`/settings?projectId=${state.project.id}`}
+          >
             Manage API keys
           </Link>
-          <Link className="button secondary-button" href="/funnels">
+          <Link
+            className="button secondary-button"
+            href={`/?projectId=${state.project.id}`}
+          >
+            Open dashboard
+          </Link>
+          <Link
+            className="button secondary-button"
+            href={`/funnels?projectId=${state.project.id}`}
+          >
             Build funnels
           </Link>
         </div>

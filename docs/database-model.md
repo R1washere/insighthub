@@ -3,7 +3,7 @@
 ## Core Design
 
 InsightHub is multi-tenant. Most product data belongs to a project, and every project belongs to an organization.
-For the portfolio demo, the database runs on SQLite through Prisma so the project can be started without Docker or external services. The same model can later be moved to PostgreSQL for production-scale analytics.
+The database runs on PostgreSQL through Prisma in local and hosted environments. Local development uses the Docker Compose service in the repository; hosted deployments use a managed PostgreSQL connection string.
 
 The tenant chain is:
 
@@ -38,7 +38,7 @@ API key metadata for event ingestion. The schema stores a key hash, not the raw 
 ### Event
 
 A tracked product event, such as `user_signed_up`, `workspace_created`, or `subscription_started`.
-Event `properties` are stored as serialized JSON text in SQLite and parsed back into objects by the API response layer.
+Event `properties` are stored as serialized JSON text and parsed back into objects by the API response layer.
 
 ### Funnel
 

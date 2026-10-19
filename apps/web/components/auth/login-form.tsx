@@ -39,13 +39,7 @@ export function LoginForm() {
     <form className="auth-form" onSubmit={handleSubmit}>
       <label className="field">
         <span>Email</span>
-        <input
-          name="email"
-          type="email"
-          autoComplete="email"
-          defaultValue="demo@insighthub.dev"
-          required
-        />
+        <input name="email" type="email" autoComplete="email" required />
       </label>
 
       <label className="field">
@@ -54,7 +48,6 @@ export function LoginForm() {
           name="password"
           type="password"
           autoComplete="current-password"
-          defaultValue="password123"
           minLength={8}
           required
         />

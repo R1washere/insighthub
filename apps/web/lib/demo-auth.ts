@@ -10,6 +10,12 @@ type AuthStorageOptions = {
 };
 
 export async function signInDemoAccount() {
+  if (
+    process.env.NODE_ENV === "production" &&
+    process.env.NEXT_PUBLIC_DEMO_LOGIN_ENABLED !== "true"
+  ) {
+    throw new Error("Demo login is disabled");
+  }
   const result = await requestApi<AuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify(demoCredentials),
@@ -23,6 +29,10 @@ export function storeAuthSession(
   result: AuthResponse,
   options: AuthStorageOptions = {},
 ) {
+  if (localStorage.getItem("insighthub.userEmail") !== result.user.email) {
+    localStorage.removeItem("insighthub.projectId");
+    localStorage.removeItem("insighthub.projectApiKey");
+  }
   localStorage.setItem("insighthub.accessToken", result.accessToken);
   localStorage.setItem("insighthub.userEmail", result.user.email);
 
@@ -50,6 +60,10 @@ export function getStoredAccessToken() {
   return localStorage.getItem("insighthub.accessToken");
 }
 
-function notifyAuthSessionChanged() {
+export function notifyAuthSessionChanged() {
   window.dispatchEvent(new Event("insighthub:auth-session-changed"));
+}
+
+export function notifyWorkspaceChanged() {
+  window.dispatchEvent(new Event("insighthub:workspace-changed"));
 }

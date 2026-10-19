@@ -1,12 +1,15 @@
 import { AppShell } from "../../components/app/app-shell";
+import { firstParam, type ReportParams } from "../../lib/dashboard-data";
+import { buildHref } from "../../components/app/report-controls";
 
-const apiKey = "ihub_demo_taskflow_development_key";
+const apiKey = "YOUR_PROJECT_API_KEY";
+const ingestionEndpoint = `${(process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000/api").replace(/\/$/, "")}/events`;
 
 const browserSnippet = `import { InsightHub } from "@insighthub/browser";
 
 const analytics = new InsightHub({
   apiKey: "${apiKey}",
-  endpoint: "http://localhost:4000/api/events",
+  endpoint: "${ingestionEndpoint}",
 });
 
 analytics.track("workspace_created", {
@@ -17,7 +20,7 @@ analytics.track("workspace_created", {
   },
 });`;
 
-const serverSnippet = `await fetch("http://localhost:4000/api/events", {
+const serverSnippet = `await fetch("${ingestionEndpoint}", {
   method: "POST",
   headers: {
     "content-type": "application/json",
@@ -33,27 +36,31 @@ const serverSnippet = `await fetch("http://localhost:4000/api/events", {
   }),
 });`;
 
-const curlSnippet = `curl -X POST http://localhost:4000/api/events \\
+const curlSnippet = `curl -X POST ${ingestionEndpoint} \\
   -H "content-type: application/json" \\
   -H "x-insighthub-key: ${apiKey}" \\
   -d '{"event":"task_created","userId":"user_123","properties":{"page":"/dashboard"}}'`;
 
-export default function TrackingPage() {
+export default async function TrackingPage({
+  searchParams,
+}: {
+  searchParams?: Promise<ReportParams>;
+}) {
+  const projectId = firstParam((await searchParams)?.projectId);
   return (
-    <AppShell active="tracking">
+    <AppShell active="tracking" requestedProjectId={projectId}>
       <header className="page-header">
         <div>
           <p className="eyebrow">Developer setup</p>
           <h2 className="page-title">Install product tracking</h2>
           <p className="page-description">
-            Connect a SaaS app to InsightHub with a project API key, send
-            custom events, and see them appear in the dashboard, event explorer,
-            and funnel reports.
+            Connect a SaaS app to InsightHub with a project API key, send custom
+            events, and see them appear in the dashboard, event explorer, and
+            funnel reports.
           </p>
         </div>
         <div className="header-stat">
-          3
-          <span>integration paths</span>
+          3<span>integration paths</span>
         </div>
       </header>
 
@@ -66,6 +73,11 @@ export default function TrackingPage() {
             once, then only a SHA-256 hash is stored by the backend.
           </p>
           <code className="key-preview">{apiKey}</code>
+          <p className="setup-copy">
+            Replace this placeholder with the key shown during onboarding, or
+            create a new key in project settings. Never use another project's
+            key.
+          </p>
         </article>
 
         <article className="panel setup-card">
@@ -89,7 +101,10 @@ export default function TrackingPage() {
             InsightHub turns raw events into time series, top events, recent
             activity, and ordered conversion funnels.
           </p>
-          <a className="button full-width" href="/events">
+          <a
+            className="button full-width"
+            href={buildHref("/events", { projectId })}
+          >
             Open event explorer
           </a>
         </article>
@@ -103,7 +118,7 @@ export default function TrackingPage() {
             hashed values in persistence.
           </p>
         </div>
-        <a className="button" href="/settings">
+        <a className="button" href={buildHref("/settings", { projectId })}>
           Open API keys
         </a>
       </section>
@@ -145,10 +160,14 @@ export default function TrackingPage() {
           <div>
             <h3 className="panel-title">Smoke-test with curl</h3>
             <p className="panel-subtitle">
-              Run this after `pnpm db:setup` and `pnpm dev` to verify ingestion.
+              Replace the key placeholder, then run this to send a real event to
+              your selected project.
             </p>
           </div>
-          <a className="button secondary-button" href="/funnels">
+          <a
+            className="button secondary-button"
+            href={buildHref("/funnels", { projectId })}
+          >
             View funnel
           </a>
         </div>

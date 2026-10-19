@@ -82,8 +82,8 @@ export class EventsService {
   }): Promise<EventListResponse> {
     await this.projectsService.assertProjectAccess(input);
     const start = new Date();
-    start.setDate(start.getDate() - input.days + 1);
-    start.setHours(0, 0, 0, 0);
+    start.setUTCDate(start.getUTCDate() - input.days + 1);
+    start.setUTCHours(0, 0, 0, 0);
 
     const where = {
       projectId: input.projectId,

@@ -9,11 +9,14 @@ import { OrganizationsModule } from "./organizations/organizations.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { ProjectsModule } from "./projects/projects.module";
 import { UsersModule } from "./users/users.module";
+import { validateEnvironment } from "./config/environment";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: [".env", "../../.env"],
+      validate: validateEnvironment,
     }),
     PrismaModule,
     UsersModule,

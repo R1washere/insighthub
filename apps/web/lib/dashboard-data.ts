@@ -4,321 +4,163 @@ import type {
   FunnelListItem,
   FunnelReport,
 } from "@insighthub/shared";
+import { requestApi } from "./api-client";
 
 export type ProjectOption = {
   id: string;
   name: string;
   environment: string;
   timezone: string;
+  organizationId?: string;
+  organizationName?: string;
 };
 
 export const dateRangeOptions = [7, 30, 90] as const;
-
-type DataRequest = {
+export type ReportParams = Record<string, string | string[] | undefined>;
+export type DataRequest = {
   days: number;
   projectId: string;
+  preview: boolean;
+  accessToken?: string | null;
+  signal?: AbortSignal;
 };
 
 export function parseDays(value: string | string[] | undefined) {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-  const parsed = Number(rawValue);
+  const parsed = Number(firstParam(value));
+  return dateRangeOptions.includes(parsed as 7 | 30 | 90) ? parsed : 30;
+}
 
-  if (dateRangeOptions.includes(parsed as (typeof dateRangeOptions)[number])) {
-    return parsed;
-  }
-
-  return 30;
+export function firstParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 export function parseEventName(value: string | string[] | undefined) {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-
-  if (!rawValue || rawValue === "all") {
-    return undefined;
-  }
-
-  return rawValue;
+  const rawValue = firstParam(value);
+  return rawValue && rawValue !== "all" ? rawValue : undefined;
 }
 
 export function parseFunnelId(value: string | string[] | undefined) {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-  return rawValue || undefined;
+  return firstParam(value) || undefined;
 }
 
-export async function getProjectOptions(): Promise<ProjectOption[]> {
-  const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:4000/api";
-  const accessToken = process.env.DEMO_ACCESS_TOKEN;
-
-  if (!accessToken) {
-    return demoProjectOptions;
-  }
-
-  try {
-    const organizationsResponse = await fetch(`${apiBaseUrl}/organizations`, {
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    });
-
-    if (!organizationsResponse.ok) {
-      return demoProjectOptions;
-    }
-
-    const organizations = (await organizationsResponse.json()) as Array<{
-      id: string;
-    }>;
-    const organizationId = organizations[0]?.id;
-
-    if (!organizationId) {
-      return demoProjectOptions;
-    }
-
-    const projectsResponse = await fetch(
-      `${apiBaseUrl}/organizations/${organizationId}/projects`,
-      {
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-      },
-    );
-
-    if (!projectsResponse.ok) {
-      return demoProjectOptions;
-    }
-
-    const projects = (await projectsResponse.json()) as Array<{
-      id: string;
-      name: string;
-      timezone: string;
-    }>;
-
-    if (projects.length === 0) {
-      return demoProjectOptions;
-    }
-
-    return projects.map((project) => ({
-      id: project.id,
-      name: project.name,
-      environment: "Production",
-      timezone: project.timezone,
-    }));
-  } catch {
-    return demoProjectOptions;
-  }
+export async function getProjectOptions(
+  accessToken: string,
+  signal?: AbortSignal,
+): Promise<ProjectOption[]> {
+  const options = {
+    headers: { authorization: `Bearer ${accessToken}` },
+    signal,
+    cache: "no-store" as const,
+  };
+  const organizations = await requestApi<Array<{ id: string; name: string }>>(
+    "/organizations",
+    options,
+  );
+  const groups = await Promise.all(
+    organizations.map(async (organization) => {
+      const projects = await requestApi<
+        Array<{ id: string; name: string; timezone: string }>
+      >(
+        `/organizations/${encodeURIComponent(organization.id)}/projects`,
+        options,
+      );
+      return projects.map((project) => ({
+        ...project,
+        environment: "Production",
+        organizationId: organization.id,
+        organizationName: organization.name,
+      }));
+    }),
+  );
+  return groups.flat();
 }
 
 export function resolveProjectId(
   value: string | string[] | undefined,
-  projectOptions: ProjectOption[],
+  projects: ProjectOption[],
+  storedId?: string | null,
 ) {
-  const rawValue = Array.isArray(value) ? value[0] : value;
-
-  if (rawValue && projectOptions.some((project) => project.id === rawValue)) {
-    return rawValue;
-  }
-
-  return (
-    process.env.DEMO_PROJECT_ID || projectOptions[0]?.id || "taskflow-prod"
-  );
+  const requested = firstParam(value);
+  if (requested && projects.some((project) => project.id === requested))
+    return requested;
+  if (storedId && projects.some((project) => project.id === storedId))
+    return storedId;
+  return projects[0]?.id ?? "";
 }
 
 export function getSelectedProject(
   projectId: string,
-  projectOptions: ProjectOption[],
+  projects: ProjectOption[],
 ) {
-  return (
-    projectOptions.find((project) => project.id === projectId) ??
-    projectOptions[0] ??
-    demoProjectOptions[0]
-  );
+  return projects.find((project) => project.id === projectId);
+}
+
+function liveRequest<T>(input: DataRequest, path: string) {
+  if (!input.accessToken) throw new Error("Sign in to load your reports.");
+  return requestApi<T>(path, {
+    headers: { authorization: `Bearer ${input.accessToken}` },
+    signal: input.signal,
+    cache: "no-store",
+  });
+}
+
+function projectPath(input: DataRequest) {
+  return `/projects/${encodeURIComponent(input.projectId)}`;
 }
 
 export async function getDashboardOverview(
   input: DataRequest,
 ): Promise<DashboardOverview> {
-  const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:4000/api";
-  const accessToken = process.env.DEMO_ACCESS_TOKEN;
-
-  if (!accessToken || isDemoProject(input.projectId)) {
-    return createDemoDashboardOverview(input);
-  }
-
-  try {
-    const response = await fetch(
-      `${apiBaseUrl}/projects/${input.projectId}/analytics/overview?days=${input.days}&limit=8`,
-      {
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-      },
-    );
-
-    if (!response.ok) {
-      return createDemoDashboardOverview(input);
-    }
-
-    return response.json();
-  } catch {
-    return createDemoDashboardOverview(input);
-  }
-}
-
-export async function getDemoFunnelReport(
-  input: DataRequest,
-): Promise<FunnelReport> {
-  return createDemoFunnelReport(input);
+  if (input.preview) return createDemoDashboardOverview(input);
+  return liveRequest(
+    input,
+    `${projectPath(input)}/analytics/overview?days=${input.days}&limit=8`,
+  );
 }
 
 export async function getEventsPageData(
   input: DataRequest & { eventName?: string },
 ): Promise<EventListResponse> {
-  const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:4000/api";
-  const accessToken = process.env.DEMO_ACCESS_TOKEN;
-
-  if (!accessToken || isDemoProject(input.projectId)) {
-    return createDemoEventsResponse(input);
-  }
-
-  try {
-    const searchParams = new URLSearchParams({
-      limit: "40",
-      days: String(input.days),
-    });
-
-    if (input.eventName) {
-      searchParams.set("eventName", input.eventName);
-    }
-
-    const response = await fetch(
-      `${apiBaseUrl}/projects/${input.projectId}/events?${searchParams.toString()}`,
-      {
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-      },
-    );
-
-    if (!response.ok) {
-      return createDemoEventsResponse(input);
-    }
-
-    return response.json();
-  } catch {
-    return createDemoEventsResponse(input);
-  }
+  if (input.preview) return createDemoEventsResponse(input);
+  const query = new URLSearchParams({ limit: "40", days: String(input.days) });
+  if (input.eventName) query.set("eventName", input.eventName);
+  return liveRequest(input, `${projectPath(input)}/events?${query}`);
 }
 
 export async function getEventFilterOptions(
   input: DataRequest,
 ): Promise<string[]> {
-  const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:4000/api";
-  const accessToken = process.env.DEMO_ACCESS_TOKEN;
-
-  if (!accessToken || isDemoProject(input.projectId)) {
-    return [...getProjectProfile(input.projectId).topEvents];
-  }
-
-  try {
-    const response = await fetch(
-      `${apiBaseUrl}/projects/${input.projectId}/analytics/top-events?days=${input.days}&limit=8`,
-      {
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-      },
-    );
-
-    if (!response.ok) {
-      return [...getProjectProfile(input.projectId).topEvents];
-    }
-
-    const events = (await response.json()) as Array<{ name: string }>;
-    return events.map((event) => event.name);
-  } catch {
-    return [...getProjectProfile(input.projectId).topEvents];
-  }
+  if (input.preview) return [...getProjectProfile(input.projectId).topEvents];
+  const events = await liveRequest<Array<{ name: string }>>(
+    input,
+    `${projectPath(input)}/analytics/top-events?days=${input.days}&limit=8`,
+  );
+  return events.map((event) => event.name);
 }
 
 export async function getFunnelsPageData(
   input: DataRequest & { funnelId?: string },
-): Promise<{
-  funnels: FunnelListItem[];
-  report: FunnelReport;
-}> {
-  const apiBaseUrl = process.env.API_BASE_URL ?? "http://localhost:4000/api";
-  const accessToken = process.env.DEMO_ACCESS_TOKEN;
-  const configuredFunnelId = input.funnelId ?? process.env.DEMO_FUNNEL_ID;
-
-  if (!accessToken || isDemoProject(input.projectId)) {
-    return {
-      funnels: [createDemoFunnelReport(input).funnel],
-      report: createDemoFunnelReport(input),
-    };
+): Promise<{ funnels: FunnelListItem[]; report: FunnelReport | null }> {
+  if (input.preview) {
+    const report = createDemoFunnelReport(input);
+    return { funnels: [report.funnel], report };
   }
-
-  try {
-    const funnelsResponse = await fetch(
-      `${apiBaseUrl}/projects/${input.projectId}/funnels`,
-      {
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-      },
-    );
-
-    if (!funnelsResponse.ok) {
-      return {
-        funnels: [createDemoFunnelReport(input).funnel],
-        report: createDemoFunnelReport(input),
-      };
-    }
-
-    const funnels = (await funnelsResponse.json()) as FunnelListItem[];
-    const funnelId = configuredFunnelId ?? funnels[0]?.id;
-
-    if (!funnelId) {
-      return {
-        funnels,
-        report: createDemoFunnelReport(input),
-      };
-    }
-
-    const reportResponse = await fetch(
-      `${apiBaseUrl}/projects/${input.projectId}/funnels/${funnelId}/report?days=${input.days}`,
-      {
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-        },
-        cache: "no-store",
-      },
-    );
-
-    if (!reportResponse.ok) {
-      return {
-        funnels,
-        report: createDemoFunnelReport(input),
-      };
-    }
-
-    return {
-      funnels,
-      report: await reportResponse.json(),
-    };
-  } catch {
-    return {
-      funnels: [createDemoFunnelReport(input).funnel],
-      report: createDemoFunnelReport(input),
-    };
-  }
+  const funnels = await liveRequest<FunnelListItem[]>(
+    input,
+    `${projectPath(input)}/funnels`,
+  );
+  const funnelId = input.funnelId ?? funnels[0]?.id;
+  if (!funnelId) return { funnels, report: null };
+  if (!funnels.some((funnel) => funnel.id === funnelId))
+    throw new Error("This funnel is not available in the selected project.");
+  const report = await liveRequest<FunnelReport>(
+    input,
+    `${projectPath(input)}/funnels/${encodeURIComponent(funnelId)}/report?days=${input.days}`,
+  );
+  return { funnels, report };
 }
 
-const demoProjectOptions: ProjectOption[] = [
+export const demoProjectOptions: ProjectOption[] = [
   {
     id: "taskflow-prod",
     name: "TaskFlow Production",
@@ -539,10 +381,6 @@ function getProjectProfile(projectId: string) {
     projectProfiles[projectId as keyof typeof projectProfiles] ??
     projectProfiles["taskflow-prod"]
   );
-}
-
-function isDemoProject(projectId: string) {
-  return demoProjectOptions.some((project) => project.id === projectId);
 }
 
 const demoRecentActivity: DashboardOverview["recentActivity"] = [

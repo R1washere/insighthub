@@ -11,12 +11,23 @@ export type AuthResponse = {
   accessToken: string;
 };
 
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 export async function requestApi<TResponse>(
   path: string,
   options: RequestInit = {},
 ): Promise<TResponse> {
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,
+    cache: "no-store",
     headers: {
       "content-type": "application/json",
       ...options.headers,
@@ -28,9 +39,11 @@ export async function requestApi<TResponse>(
     const message =
       typeof errorBody?.message === "string"
         ? errorBody.message
-        : "Request failed";
+        : Array.isArray(errorBody?.message)
+          ? errorBody.message.join(". ")
+          : "Request failed. Please try again.";
 
-    throw new Error(message);
+    throw new ApiError(message, response.status);
   }
 
   return response.json();
