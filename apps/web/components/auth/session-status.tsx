@@ -1,140 +1,86 @@
 "use client";
-
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
+import { useState } from "react";
 import {
   clearAuthSession,
-  getStoredAccessToken,
   getStoredUserEmail,
   signInDemoAccount,
-  storeAuthSession,
 } from "../../lib/demo-auth";
-import { type AuthResponse, requestApi } from "../../lib/api-client";
+import { useWorkspace } from "../app/workspace-provider";
 
 export function SessionStatus() {
-  const demoLoginEnabled =
+  const workspace = useWorkspace();
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const demoEnabled =
     process.env.NODE_ENV !== "production" ||
     process.env.NEXT_PUBLIC_DEMO_LOGIN_ENABLED === "true";
-  const router = useRouter();
-  const [email, setEmail] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDemoLoading, setIsDemoLoading] = useState(false);
-
-  useEffect(() => {
-    void validateSession();
-
-    window.addEventListener("insighthub:auth-session-changed", validateSession);
-    return () => {
-      window.removeEventListener(
-        "insighthub:auth-session-changed",
-        validateSession,
-      );
-    };
-  }, []);
-
-  async function validateSession() {
-    const accessToken = getStoredAccessToken();
-
-    if (!accessToken) {
-      setEmail(null);
-      setIsLoading(false);
-      return;
-    }
-
-    setEmail(getStoredUserEmail());
-
-    try {
-      const user = await requestApi<AuthResponse["user"]>("/auth/me", {
-        headers: {
-          authorization: `Bearer ${accessToken}`,
-        },
-      });
-
-      storeAuthSession(
-        {
-          accessToken,
-          user,
-        },
-        { notify: false },
-      );
-      setEmail(user.email);
-    } catch {
-      clearAuthSession({ notify: false });
-      setEmail(null);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function handleDemoLogin() {
+  async function loginDemo() {
+    setSubmitting(true);
     setError(null);
-    setIsDemoLoading(true);
-
     try {
-      const result = await signInDemoAccount();
-      setEmail(result.user.email);
+      await signInDemoAccount();
       router.refresh();
     } catch (error) {
-      setError(
-        error instanceof Error ? error.message : "Unable to start demo session",
-      );
+      setError(error instanceof Error ? error.message : "Unable to sign in.");
     } finally {
-      setIsDemoLoading(false);
+      setSubmitting(false);
     }
   }
-
-  function handleSignOut() {
-    clearAuthSession();
-    setEmail(null);
-    router.refresh();
-  }
-
-  if (isLoading) {
-    return (
-      <section className="session-card" aria-label="Session status">
-        <p className="session-label">Session</p>
-        <p className="session-email">Checking access...</p>
-      </section>
-    );
-  }
-
-  if (!email) {
-    return (
-      <section className="session-card" aria-label="Session status">
-        <p className="session-label">Session</p>
-        <p className="session-email">Guest mode</p>
-        {demoLoginEnabled ? (
-          <button
-            className="button full-width compact-button"
-            disabled={isDemoLoading}
-            onClick={handleDemoLogin}
-            type="button"
-          >
-            {isDemoLoading ? "Opening demo..." : "Use demo account"}
-          </button>
-        ) : null}
-        <Link className="session-link" href="/login">
-          Sign in manually
-        </Link>
-        {error ? <p className="session-error">{error}</p> : null}
-      </section>
-    );
-  }
-
   return (
     <section className="session-card" aria-label="Session status">
-      <p className="session-label">Signed in</p>
-      <p className="session-email">{email}</p>
-      <button
-        className="table-action full-width"
-        onClick={handleSignOut}
-        type="button"
-      >
-        Sign out
-      </button>
+      <p className="session-label">Session</p>
+      <p className="session-email">
+        {workspace.status === "loading"
+          ? "Checking access..."
+          : workspace.accessToken
+            ? workspace.expired
+              ? "Session expired"
+              : getStoredUserEmail()
+            : "Guest mode"}
+      </p>
+      {workspace.accessToken ? (
+        <>
+          {workspace.expired ? (
+            <Link className="session-link" href="/login">
+              Sign in again
+            </Link>
+          ) : null}
+          <button
+            className="table-action full-width"
+            type="button"
+            onClick={() => {
+              clearAuthSession();
+              router.refresh();
+            }}
+          >
+            Sign out
+          </button>
+        </>
+      ) : (
+        <>
+          {demoEnabled && workspace.preview ? (
+            <button
+              className="button full-width compact-button"
+              disabled={submitting}
+              onClick={loginDemo}
+              type="button"
+            >
+              {submitting ? "Opening demo..." : "Use demo account"}
+            </button>
+          ) : null}
+          <Link className="session-link" href="/login">
+            Sign in manually
+          </Link>
+        </>
+      )}
+      {error ? (
+        <p className="session-error" role="alert">
+          {error}
+        </p>
+      ) : null}
     </section>
   );
 }

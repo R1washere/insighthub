@@ -8,6 +8,7 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "test:api": "node scripts/api-smoke-test.mjs",
+    "test:reports": "node --import tsx --test scripts/report-data.test.ts",
     "test:e2e": "playwright test",
     "typecheck": "pnpm -r typecheck",
     "verify": "node scripts/local-verify.mjs",

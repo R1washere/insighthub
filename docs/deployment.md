@@ -86,12 +86,13 @@ instance. The migration is idempotent.
 
 ## Current product and security limits
 
-- The dashboard, event, and funnel reports currently fall back to sample
-  portfolio data. A logged-in user's localStorage bearer token is not forwarded
-  to these server-rendered reports. Registration, onboarding, key management,
-  ingestion, and authenticated analytics API routes work against PostgreSQL.
-  Deploying does not add a per-user reporting session; that is separate feature
-  work. The sidebar labels the sample reports explicitly.
+- Signed-in dashboard, events, and funnels load authenticated API data in the
+  browser using that user's session. Projects are collected from all of the
+  user's organizations. Reports never substitute sample numbers on API failure,
+  expired sessions, empty workspaces, or unknown project/funnel identifiers.
+  Guests see explicitly labeled sample portfolio reports. No shared
+  `DEMO_ACCESS_TOKEN` is used. Private reports are not embedded in HTML or cached.
+  Report requests are canceled when the user, project, or filters change.
 - Bearer tokens are currently kept in localStorage. Use this deployment with
   demo data; move to HttpOnly cookies and per-user server-side authorization
   before collecting sensitive customer data.

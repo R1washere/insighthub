@@ -1,9 +1,12 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { SessionStatus } from "../auth/session-status";
 import { buildHref } from "./report-controls";
 import type { ProjectOption } from "../../lib/dashboard-data";
+import { useWorkspace } from "./workspace-provider";
 
 type AppShellProps = {
   active:
@@ -11,6 +14,8 @@ type AppShellProps = {
   children: ReactNode;
   days?: number;
   project?: ProjectOption;
+  preview?: boolean;
+  requestedProjectId?: string;
 };
 
 const navItems = [
@@ -22,22 +27,28 @@ const navItems = [
   { label: "Settings", href: "/settings", value: "settings" },
 ] as const;
 
-const defaultProject: ProjectOption = {
-  id: "taskflow-prod",
-  name: "TaskFlow Production",
-  environment: "Production",
-  timezone: "Europe/Prague",
-};
-
-export function AppShell({ active, children, days, project }: AppShellProps) {
-  const currentProject = project ?? defaultProject;
+export function AppShell({
+  active,
+  children,
+  days,
+  project,
+  preview,
+  requestedProjectId,
+}: AppShellProps) {
+  const workspace = useWorkspace();
+  const currentProject =
+    project ??
+    workspace.projects.find((item) => item.id === requestedProjectId) ??
+    workspace.projects.find((item) => item.id === workspace.storedProjectId) ??
+    workspace.projects[0];
+  const isPreview = preview ?? workspace.preview;
 
   return (
     <div className="shell">
       <aside className="sidebar">
         <Link
           className="brand-link"
-          href={buildHref("/", { days, projectId: currentProject.id })}
+          href={buildHref("/", { days, projectId: currentProject?.id })}
         >
           <h1 className="brand-title">InsightHub</h1>
           <p className="brand-subtitle">Product analytics for SaaS teams</p>
@@ -47,12 +58,21 @@ export function AppShell({ active, children, days, project }: AppShellProps) {
           <p className="project-context-label">Current project</p>
           <div className="project-context-card">
             <div>
-              <p className="project-context-name">{currentProject.name}</p>
+              <p className="project-context-name">
+                {currentProject?.name ??
+                  (workspace.status === "loading"
+                    ? "Connecting..."
+                    : "No project selected")}
+              </p>
               <p className="project-context-meta">
-                {currentProject.environment} / {currentProject.timezone}
+                {currentProject
+                  ? `${currentProject.organizationName ?? currentProject.environment} / ${currentProject.timezone}`
+                  : "Create a workspace to start"}
               </p>
             </div>
-            <span className="status-pill">Live</span>
+            <span className="status-pill">
+              {isPreview ? "Sample" : "Workspace"}
+            </span>
           </div>
         </section>
 
@@ -64,7 +84,7 @@ export function AppShell({ active, children, days, project }: AppShellProps) {
                 days: ["dashboard", "events", "funnels"].includes(item.value)
                   ? days
                   : undefined,
-                projectId: currentProject.id,
+                projectId: currentProject?.id,
               })}
               key={item.value}
             >
@@ -74,8 +94,12 @@ export function AppShell({ active, children, days, project }: AppShellProps) {
         </nav>
 
         <div className="sidebar-footer">
-          <p>Demo workspace</p>
-          <span>Sample analytics · portfolio preview</span>
+          <p>{isPreview ? "Demo workspace" : "Your workspace"}</p>
+          <span>
+            {isPreview
+              ? "Sample analytics · portfolio preview"
+              : "Authenticated project data"}
+          </span>
         </div>
 
         <SessionStatus />
