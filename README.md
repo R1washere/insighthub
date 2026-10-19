@@ -1,6 +1,6 @@
 # InsightHub
 
-[![CI](https://github.com/R1washere/insighthub/actions/workflows/ci.yml/badge.svg?branch=codex%2Fdeployment-readiness)](https://github.com/R1washere/insighthub/actions/workflows/ci.yml)
+[![CI](https://github.com/R1washere/insighthub/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/R1washere/insighthub/actions/workflows/ci.yml)
 
 InsightHub is a full-stack product analytics demo for B2B SaaS teams. It
 tracks custom events, manages project API keys, and turns raw product activity
@@ -36,8 +36,8 @@ public screenshots and never reuse account tokens in tracking code.
 This is a personal portfolio deployment, not a commercial analytics service.
 The API runs on a free tier and may take about a minute to wake after inactivity.
 Use synthetic data only; see [known limits](docs/deployment.md#current-product-and-security-limits).
-The live deployment currently tracks `codex/deployment-readiness`; the migration
-to `main` remains under [PR #1](https://github.com/R1washere/insighthub/pull/1).
+The deployment-ready application code is merged into `main`. The published demo
+and API are live-verified; deployment and security details are documented below.
 
 ## Quick Review
 
